@@ -33,10 +33,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <OpenColorIO/OpenColorIO.h>
 
 #include "GpuShaderUtils.h"
+#include "ilmbase/half.h"
 #include "HashUtils.h"
 #include "MathUtils.h"
-#include "RangeOpCPU.h"
-#include "RangeOps.h"
+#include "ops/Range/RangeOpCPU.h"
+#include "ops/Range/RangeOpGPU.h"
+#include "ops/Range/RangeOps.h"
+
 
 OCIO_NAMESPACE_ENTER
 {
@@ -205,7 +208,7 @@ void RangeOp::finalize()
     rangeData()->finalize();
 
     ConstRangeOpDataRcPtr rangeOpData = constThis.rangeData();
-    m_cpu = RangeOpCPU::GetRenderer(rangeOpData);
+    m_cpu = GetRangeRenderer(rangeOpData);
 
     // Create the cacheID
     std::ostringstream cacheIDStream;
@@ -236,65 +239,8 @@ void RangeOp::extractGpuShaderInfo(GpuShaderDescRcPtr & shaderDesc) const
             "Only 32F bit depth is supported for the GPU shader");
     }
 
-    GpuShaderText ss(shaderDesc->getLanguage());
-    ss.indent();
-
-    ss.newLine() << "";
-    ss.newLine() << "// Add Range processing";
-    ss.newLine() << "";
-
-    if(rangeData()->scales(true))
-    {
-        const double scale[4] 
-            = { rangeData()->getScale(), 
-                rangeData()->getScale(), 
-                rangeData()->getScale(), 
-                rangeData()->getAlphaScale() };
-
-        const double offset[4] 
-            = { rangeData()->getOffset(), 
-                rangeData()->getOffset(), 
-                rangeData()->getOffset(), 
-                0. };
-
-        ss.newLine() << shaderDesc->getPixelName() << " = "
-                     << shaderDesc->getPixelName()
-                     << " * "
-                     << ss.vec4fConst(scale[0], scale[1], scale[2], scale[3])
-                     << " + "
-                     << ss.vec4fConst(offset[0], offset[1], offset[2], offset[3])
-                     << ";";
-    }
-
-    if(rangeData()->minClips())
-    {
-        const double lowerBound[4] 
-            = { rangeData()->getLowBound(), 
-                rangeData()->getLowBound(), 
-                rangeData()->getLowBound(), 
-                -1. * HALF_MAX };
-
-        ss.newLine() << shaderDesc->getPixelName() << " = "
-                     << "max(" << shaderDesc->getPixelName() << ", "
-                     << ss.vec4fConst(lowerBound[0], lowerBound[1], lowerBound[2], lowerBound[3])
-                     << ");";
-    }
-
-    if(rangeData()->maxClips())
-    {
-        const double upperBound[4] 
-            = { rangeData()->getHighBound(), 
-                rangeData()->getHighBound(), 
-                rangeData()->getHighBound(), 
-                HALF_MAX };
-
-        ss.newLine() << shaderDesc->getPixelName() << " = "
-                     << "min(" << shaderDesc->getPixelName() << ", "
-                     << ss.vec4fConst(upperBound[0], upperBound[1], upperBound[2], upperBound[3])
-                     << ");";
-    }
-
-    shaderDesc->addToFunctionShaderCode(ss.string().c_str());
+    ConstRangeOpDataRcPtr data = rangeData();
+    GetRangeGPUShaderProgram(shaderDesc, data);
 }
 
 }  // Anon namespace
@@ -357,141 +303,9 @@ OCIO_NAMESPACE_USING
 
 const float g_error = 1e-7f;
 
-
-OIIO_ADD_TEST(RangeOps, identity)
-{
-    OCIO::RangeOp r;
-
-    float image[4*3] = { -0.50f, -0.25f, 0.50f, 0.0f,
-                          0.75f,  1.00f, 1.25f, 1.0f,
-                          1.25f,  1.50f, 1.75f, 0.0f };
-
-    OIIO_CHECK_NO_THROW(r.finalize());
-    OIIO_CHECK_NO_THROW(r.apply(&image[0], 3));
-
-    OIIO_CHECK_CLOSE(image[0],  -0.50f, g_error);
-    OIIO_CHECK_CLOSE(image[1],  -0.25f, g_error);
-    OIIO_CHECK_CLOSE(image[2],   0.50f, g_error);
-    OIIO_CHECK_CLOSE(image[3],   0.00f, g_error);
-    OIIO_CHECK_CLOSE(image[4],   0.75f, g_error);
-    OIIO_CHECK_CLOSE(image[5],   1.00f, g_error);
-    OIIO_CHECK_CLOSE(image[6],   1.25f, g_error);
-    OIIO_CHECK_CLOSE(image[7],   1.00f, g_error);
-    OIIO_CHECK_CLOSE(image[8],   1.25f, g_error);
-    OIIO_CHECK_CLOSE(image[9],   1.50f, g_error);
-    OIIO_CHECK_CLOSE(image[10],  1.75f, g_error);
-    OIIO_CHECK_CLOSE(image[11],  0.00f, g_error);
-}
-
-OIIO_ADD_TEST(RangeOps, scale_with_low_and_high_clippings)
-{
-    OCIO::RangeOp r(0.0f, 1.0f, 0.5f, 1.5f, OCIO::TRANSFORM_DIR_FORWARD);
-    OIIO_CHECK_NO_THROW(r.finalize());
-
-    float image[4*3] = { -0.50f, -0.25f, 0.50f, 0.0f,
-                          0.75f,  1.00f, 1.25f, 1.0f,
-                          1.25f,  1.50f, 1.75f, 0.0f };
-
-    OIIO_CHECK_NO_THROW(r.apply(&image[0], 3));
-
-    OIIO_CHECK_CLOSE(image[0],  0.50f, g_error);
-    OIIO_CHECK_CLOSE(image[1],  0.50f, g_error);
-    OIIO_CHECK_CLOSE(image[2],  1.00f, g_error);
-    OIIO_CHECK_CLOSE(image[3],  0.00f, g_error);
-    OIIO_CHECK_CLOSE(image[4],  1.25f, g_error);
-    OIIO_CHECK_CLOSE(image[5],  1.50f, g_error);
-    OIIO_CHECK_CLOSE(image[6],  1.50f, g_error);
-    OIIO_CHECK_CLOSE(image[7],  1.00f, g_error);
-    OIIO_CHECK_CLOSE(image[8],  1.50f, g_error);
-    OIIO_CHECK_CLOSE(image[9],  1.50f, g_error);
-    OIIO_CHECK_CLOSE(image[10], 1.50f, g_error);
-    OIIO_CHECK_CLOSE(image[11], 0.00f, g_error);
-}
-
-OIIO_ADD_TEST(RangeOps, scale_with_low_clipping)
-{
-    OCIO::RangeOp r(0.0f, OCIO::RangeOpData::EmptyValue(), 
-                    0.5f, OCIO::RangeOpData::EmptyValue(), 
-                    OCIO::TRANSFORM_DIR_FORWARD);
-
-    OIIO_CHECK_NO_THROW(r.finalize());
-
-    float image[4*3] = { -0.50f, -0.25f, 0.50f, 0.0f,
-                          0.75f,  1.00f, 1.25f, 1.0f,
-                          1.25f,  1.50f, 1.75f, 0.0f };
-
-    OIIO_CHECK_NO_THROW(r.apply(&image[0], 3));
-
-    OIIO_CHECK_CLOSE(image[0],  0.50f, g_error);
-    OIIO_CHECK_CLOSE(image[1],  0.50f, g_error);
-    OIIO_CHECK_CLOSE(image[2],  1.00f, g_error);
-    OIIO_CHECK_CLOSE(image[3],  0.00f, g_error);
-    OIIO_CHECK_CLOSE(image[4],  1.25f, g_error);
-    OIIO_CHECK_CLOSE(image[5],  1.50f, g_error);
-    OIIO_CHECK_CLOSE(image[6],  1.75f, g_error);
-    OIIO_CHECK_CLOSE(image[7],  1.00f, g_error);
-    OIIO_CHECK_CLOSE(image[8],  1.75f, g_error);
-    OIIO_CHECK_CLOSE(image[9],  2.00f, g_error);
-    OIIO_CHECK_CLOSE(image[10], 2.25f, g_error);
-    OIIO_CHECK_CLOSE(image[11], 0.00f, g_error);
-}
-
-OIIO_ADD_TEST(RangeOps, scale_with_high_clipping)
-{
-    OCIO::RangeOp r(OCIO::RangeOpData::EmptyValue(), 1.0f, 
-                    OCIO::RangeOpData::EmptyValue(), 1.5f, 
-                    OCIO::TRANSFORM_DIR_FORWARD);
-
-    OIIO_CHECK_NO_THROW(r.finalize());
-
-    float image[4*3] = { -0.50f, -0.25f, 0.50f, 0.0f,
-                          0.75f,  1.00f, 1.25f, 1.0f,
-                          1.25f,  1.50f, 1.75f, 0.0f };
-
-    OIIO_CHECK_NO_THROW(r.apply(&image[0], 3));
-
-    OIIO_CHECK_CLOSE(image[0],  0.00f, g_error);
-    OIIO_CHECK_CLOSE(image[1],  0.25f, g_error);
-    OIIO_CHECK_CLOSE(image[2],  1.00f, g_error);
-    OIIO_CHECK_CLOSE(image[3],  0.00f, g_error);
-    OIIO_CHECK_CLOSE(image[4],  1.25f, g_error);
-    OIIO_CHECK_CLOSE(image[5],  1.50f, g_error);
-    OIIO_CHECK_CLOSE(image[6],  1.50f, g_error);
-    OIIO_CHECK_CLOSE(image[7],  1.00f, g_error);
-    OIIO_CHECK_CLOSE(image[8],  1.50f, g_error);
-    OIIO_CHECK_CLOSE(image[9],  1.50f, g_error);
-    OIIO_CHECK_CLOSE(image[10], 1.50f, g_error);
-    OIIO_CHECK_CLOSE(image[11], 0.00f, g_error);
-}
-
-OIIO_ADD_TEST(RangeOps, scale_with_low_and_high_clippings_2)
-{
-    OCIO::RangeOp r(0.0f, 1.0f, 0.0f, 1.5f, OCIO::TRANSFORM_DIR_FORWARD);
-    OIIO_CHECK_NO_THROW(r.finalize());
-
-    float image[4*3] = { -0.50f, -0.25f, 0.50f, 0.0f,
-                          0.75f,  1.00f, 1.25f, 1.0f,
-                          1.25f,  1.50f, 1.75f, 0.0f };
-
-    OIIO_CHECK_NO_THROW(r.apply(&image[0], 3));
-
-    OIIO_CHECK_CLOSE(image[0],  0.000f, g_error);
-    OIIO_CHECK_CLOSE(image[1],  0.000f, g_error);
-    OIIO_CHECK_CLOSE(image[2],  0.750f, g_error);
-    OIIO_CHECK_CLOSE(image[3],  0.000f, g_error);
-    OIIO_CHECK_CLOSE(image[4],  1.125f, g_error);
-    OIIO_CHECK_CLOSE(image[5],  1.500f, g_error);
-    OIIO_CHECK_CLOSE(image[6],  1.500f, g_error);
-    OIIO_CHECK_CLOSE(image[7],  1.000f, g_error);
-    OIIO_CHECK_CLOSE(image[8],  1.500f, g_error);
-    OIIO_CHECK_CLOSE(image[9],  1.500f, g_error);
-    OIIO_CHECK_CLOSE(image[10], 1.500f, g_error);
-    OIIO_CHECK_CLOSE(image[11], 0.000f, g_error);
-}
-
 OIIO_ADD_TEST(RangeOps, apply_arbitrary)
 {
-    OCIO::RangeOp r(-0.101f, 0.950f, 0.194f, 1.001f, OCIO::TRANSFORM_DIR_FORWARD);
+    OCIO::RangeOp r(-0.101, 0.95, 0.194, 1.001, OCIO::TRANSFORM_DIR_FORWARD);
     OIIO_CHECK_NO_THROW(r.finalize());
 
     float image[4*3] = { -0.50f,  0.25f, 0.50f, 0.0f,
@@ -518,10 +332,10 @@ OIIO_ADD_TEST(RangeOps, combining)
 {
     OCIO::OpRcPtrVec ops;
 
-    OCIO::CreateRangeOp(ops, 0.0f, 0.5f, 0.5f, 1.0f);
+    OCIO::CreateRangeOp(ops, 0., 0.5, 0.5, 1.0);
     OIIO_REQUIRE_EQUAL(ops.size(), 1);
     OIIO_CHECK_NO_THROW(ops[0]->finalize());
-    OCIO::CreateRangeOp(ops, 0.0f, 1.0f, 0.5f, 1.5f);
+    OCIO::CreateRangeOp(ops, 0., 1., 0.5, 1.5);
     OIIO_REQUIRE_EQUAL(ops.size(), 2);
     OIIO_CHECK_NO_THROW(ops[1]->finalize());
 
@@ -558,7 +372,7 @@ OIIO_ADD_TEST(RangeOps, is_inverse)
 {
     OCIO::OpRcPtrVec ops;
 
-    OCIO::CreateRangeOp(ops, 0., 0.5, 0.5, 1., OCIO::TRANSFORM_DIR_FORWARD);
+    OCIO::CreateRangeOp(ops, 0., 0.5, 0.5, 1.);
     OIIO_CHECK_EQUAL(ops.size(), 1);
     // Skip finalize so that inverse direction is kept
     OCIO::CreateRangeOp(ops, 0., 0.5, 0.5, 1., OCIO::TRANSFORM_DIR_INVERSE);
@@ -581,14 +395,14 @@ OIIO_ADD_TEST(RangeOps, is_inverse)
 
     OIIO_CHECK_ASSERT(ops[0]->isInverse(op1));
 
-    OCIO::CreateRangeOp(ops, 0.000002, 0.5, 0.5, 1.0, OCIO::TRANSFORM_DIR_INVERSE);
+    OCIO::CreateRangeOp(ops, 0.000002, 0.5, 0.5, 1., OCIO::TRANSFORM_DIR_INVERSE);
     OIIO_REQUIRE_EQUAL(ops.size(), 4);
     OCIO::ConstOpRcPtr op3 = ops[3];
 
     OIIO_CHECK_ASSERT(!ops[0]->isInverse(op3));
     OIIO_CHECK_ASSERT(!ops[2]->isInverse(op3));
 
-    OCIO::CreateRangeOp(ops, 0.000002, 0.5, 0.5, 1.0, OCIO::TRANSFORM_DIR_FORWARD);
+    OCIO::CreateRangeOp(ops, 0.000002, 0.5, 0.5, 1.);
     OIIO_REQUIRE_EQUAL(ops.size(), 5);
     OCIO::ConstOpRcPtr op4 = ops[4];
 
@@ -610,9 +424,9 @@ OIIO_ADD_TEST(RangeOps, computed_identifier)
 {
     OCIO::OpRcPtrVec ops;
 
-    OCIO::CreateRangeOp(ops, 0., 0.5, 0.5, 1.0, OCIO::TRANSFORM_DIR_FORWARD);
-    OCIO::CreateRangeOp(ops, 0., 0.5, 0.5, 1.0, OCIO::TRANSFORM_DIR_FORWARD);
-    OCIO::CreateRangeOp(ops, 0.1, 1., 0.3, 1.9, OCIO::TRANSFORM_DIR_FORWARD);
+    OCIO::CreateRangeOp(ops, 0., 0.5, 0.5, 1.0);
+    OCIO::CreateRangeOp(ops, 0., 0.5, 0.5, 1.0);
+    OCIO::CreateRangeOp(ops, 0.1, 1., 0.3, 1.9);
     OCIO::CreateRangeOp(ops, 0.1, 1., 0.3, 1.9, OCIO::TRANSFORM_DIR_INVERSE);
     for(OCIO::OpRcPtrVec::reference op : ops) { op->finalize(); }
 
@@ -623,7 +437,7 @@ OIIO_ADD_TEST(RangeOps, computed_identifier)
     OIIO_CHECK_ASSERT(ops[1]->getCacheID() != ops[2]->getCacheID());
     OIIO_CHECK_ASSERT(ops[2]->getCacheID() != ops[3]->getCacheID());
 
-    OCIO::CreateRangeOp(ops, 0.1f, 1.0f, 0.3f, 1.90001f, OCIO::TRANSFORM_DIR_FORWARD);
+    OCIO::CreateRangeOp(ops, 0.1, 1., 0.3, 1.90001);
     for(OCIO::OpRcPtrVec::reference op : ops) { op->finalize(); }
 
     OIIO_REQUIRE_EQUAL(ops.size(), 5);

@@ -46,32 +46,19 @@ class Lut3DOpData : public OpData
 {
 public:
 
-    // Enumeration of the inverse 3D LUT styles.
-    // There are two inversion algorithms provided for 3D LUT, an exact
-    // method (that assumes use of tetrahedral in the forward direction)
-    // and a fast method that bakes the inverse out as another forward
-    // 3D LUT. The exact method is currently unavailable on the GPU.
-    // Both methods assume that the input and output to the 3D LUT are
-    // roughly perceptually uniform. Values outside the range of the
-    // forward 3D LUT are clamped to someplace on the exterior surface
-    // of the 3D LUT.
-    enum InvStyle
-    {
-        INV_EXACT = 0,
-        INV_FAST
-    };
-
     // The maximum grid size supported for a 3D LUT.
     static const unsigned long maxSupportedLength;
 
     // Use functional composition to generate a single op that 
     // approximates the effect of the pair of ops.
-    static Lut3DOpDataRcPtr Compose(ConstLut3DOpDataRcPtr & A,
-                                    ConstLut3DOpDataRcPtr & B);
+    static void Compose(Lut3DOpDataRcPtr & A,
+                        ConstLut3DOpDataRcPtr & B);
 
 public:
     // The gridSize parameter is the length of the cube axis.
-    explicit Lut3DOpData(long gridSize);
+    explicit Lut3DOpData(unsigned long gridSize);
+
+    Lut3DOpData(long gridSize, TransformDirection dir);
 
     Lut3DOpData(
         BitDepth             inBitDepth,
@@ -79,7 +66,7 @@ public:
         const std::string &  id,
         const Descriptions & descriptions,
         Interpolation        interpolation,
-        long                 gridSize
+        unsigned long        gridSize
     );
 
     virtual ~Lut3DOpData();
@@ -94,9 +81,20 @@ public:
 
     TransformDirection getDirection() const { return m_direction; }
 
-    inline InvStyle getInvStyle() const { return m_invStyle; }
+    // There are two inversion algorithms provided for 3D LUT, an exact
+    // method (that assumes use of tetrahedral in the forward direction)
+    // and a fast method that bakes the inverse out as another forward
+    // 3D LUT. The exact method is currently unavailable on the GPU.
+    // Both methods assume that the input and output to the 3D LUT are
+    // roughly perceptually uniform. Values outside the range of the
+    // forward 3D LUT are clamped to someplace on the exterior surface
+    // of the 3D LUT.
+    inline LutInversionQuality getInversionQuality() const { return m_invQuality; }
 
-    void setInvStyle(InvStyle style);
+    // LUT_INVERSION_BEST and LUT_INVERSION_DEFAULT are translated to what should be used.
+    LutInversionQuality getConcreteInversionQuality() const;
+
+    void setInversionQuality(LutInversionQuality style);
 
     inline const Array & getArray() const { return m_array; }
 
@@ -128,7 +126,7 @@ public:
 
     Lut3DOpDataRcPtr inverse() const;
 
-    bool operator==(const OpData& other) const;
+    bool operator==(const OpData& other) const override;
 
     void finalize() override;
 
@@ -139,11 +137,11 @@ protected:
     static bool isInverse(const Lut3DOpData * lutfwd, const Lut3DOpData * lutinv);
 
 public:
-    // Class which encapsulates an array dedicated to a 3D LUT
+    // Class which encapsulates an array dedicated to a 3D LUT.
     class Lut3DArray : public Array
     {
     public:
-        Lut3DArray(long dimension, BitDepth outBitDepth);
+        Lut3DArray(unsigned long dimension, BitDepth outBitDepth);
 
         Lut3DArray(const Lut3DArray &) = default;
         Lut3DArray & operator= (const Lut3DArray &) = default;
@@ -163,7 +161,7 @@ public:
         void scale(float scaleFactor);
 
     protected:
-        // Fill the LUT 3D with appropriate default values
+        // Fill the LUT 3D with appropriate default values.
         void fill(BitDepth outBitDepth);
 
     };
@@ -171,11 +169,11 @@ public:
 private:
     Lut3DOpData() = delete;
 
-    Interpolation      m_interpolation;
-    Lut3DArray         m_array;
+    Interpolation       m_interpolation;
+    Lut3DArray          m_array;
 
-    TransformDirection m_direction;
-    InvStyle           m_invStyle;
+    TransformDirection  m_direction;
+    LutInversionQuality m_invQuality;
 };
 
 // Make a forward Lut3DOpData that approximates the exact inverse Lut3DOpData

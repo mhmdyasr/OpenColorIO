@@ -33,91 +33,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <OpenColorIO/OpenColorIO.h>
 
-#include "Op.h"
 #include "ops/Range/RangeOpData.h"
 
 
 OCIO_NAMESPACE_ENTER
 {
 
-class RangeOpCPU;
-typedef OCIO_SHARED_PTR<RangeOpCPU> RangeOpCPURcPtr;
-
-class RangeOpCPU : public OpCPU
-{
-public:
-
-    // Get the dedicated renderer
-    static OpCPURcPtr GetRenderer(ConstRangeOpDataRcPtr & range);
-
-    RangeOpCPU(ConstRangeOpDataRcPtr & range);
-
-protected:
-    float m_scale;
-    float m_offset;
-    float m_lowerBound;
-    float m_upperBound;
-    float m_alphaScale;
-
-private:
-    RangeOpCPU();
-};
-
-class RangeScaleMinMaxRenderer : public RangeOpCPU
-{
-public:
-    RangeScaleMinMaxRenderer(ConstRangeOpDataRcPtr & range);
-
-    virtual void apply(float * rgbaBuffer, long numPixels) const;
-};
-
-class RangeScaleMinRenderer : public RangeOpCPU
-{
-public:
-    RangeScaleMinRenderer(ConstRangeOpDataRcPtr & range);
-
-    virtual void apply(float * rgbaBuffer, long numPixels) const;
-};
-
-class RangeScaleMaxRenderer : public RangeOpCPU
-{
-public:
-    RangeScaleMaxRenderer(ConstRangeOpDataRcPtr & range);
-
-    virtual void apply(float * rgbaBuffer, long numPixels) const;
-};
-
-class RangeScaleRenderer : public RangeOpCPU
-{
-public:
-    RangeScaleRenderer(ConstRangeOpDataRcPtr & range);
-
-    virtual void apply(float * rgbaBuffer, long numPixels) const;
-};
-
-class RangeMinMaxRenderer : public RangeOpCPU
-{
-public:
-    RangeMinMaxRenderer(ConstRangeOpDataRcPtr & range);
-
-    virtual void apply(float * rgbaBuffer, long numPixels) const;
-};
-
-class RangeMinRenderer : public RangeOpCPU
-{
-public:
-    RangeMinRenderer(ConstRangeOpDataRcPtr & range);
-
-    virtual void apply(float * rgbaBuffer, long numPixels) const;
-};
-
-class RangeMaxRenderer : public RangeOpCPU
-{
-public:
-    RangeMaxRenderer(ConstRangeOpDataRcPtr & range);
-
-    virtual void apply(float * rgbaBuffer, long numPixels) const;
-};
+OpCPURcPtr GetRangeRenderer(ConstRangeOpDataRcPtr & range);
 
 }
 OCIO_NAMESPACE_EXIT

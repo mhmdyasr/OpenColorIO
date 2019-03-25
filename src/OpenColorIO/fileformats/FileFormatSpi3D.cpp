@@ -32,6 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <OpenColorIO/OpenColorIO.h>
 
 #include "ops/Lut3D/Lut3DOp.h"
+#include "Platform.h"
 #include "pystring/pystring.h"
 #include "transforms/FileTransform.h"
 
@@ -255,7 +256,7 @@ OCIO_NAMESPACE_EXIT
 
 namespace OCIO = OCIO_NAMESPACE;
 #include "unittest.h"
-#include "UnitTestFiles.h"
+#include "UnitTestUtils.h"
 
 OIIO_ADD_TEST(FileFormatSpi3D, FormatInfo)
 {
