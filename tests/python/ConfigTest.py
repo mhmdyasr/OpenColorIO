@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright Contributors to the OpenColorIO Project.
 
 import unittest, os, sys
 import PyOpenColorIO as OCIO
@@ -63,7 +65,7 @@ colorspaces:
     allocation: uniform
     to_reference: !<GroupTransform>
       children:
-        - !<ExponentTransform> {value: [2.2, 2.2, 2.2, 1]}
+        - !<ExponentTransform> {value: 2.2}
         - !<MatrixTransform> {matrix: [1, 2, 3, 4, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1], offset: [1, 2, 0, 0]}
         - !<CDLTransform> {slope: [0.9, 1, 1], offset: [0.1, 0.3, 0.4], power: [1.1, 1.1, 1.1], sat: 0.9}
 """
@@ -143,7 +145,7 @@ return out_pixel;
         self.assertEqual("lnh", _cfge.getColorSpaceNameByIndex(1))
         lnh = _cfge.getColorSpace("lnh")
         self.assertEqual("ln", lnh.getFamily())
-        self.assertEqual(0, _cfge.getIndexForColorSpace("foobar"))
+        self.assertEqual(-1, _cfge.getIndexForColorSpace("foobar"))
         cs = OCIO.ColorSpace()
         cs.setName("blah")
         _cfge.addColorSpace(cs)
@@ -225,5 +227,14 @@ return out_pixel;
         self.assertAlmostEqual(1.0, rgbafoo[3], delta=1e-8)
         #self.assertEqual("$a92ef63abd9edf61ad5a7855da064648", _proc.getCpuCacheID())
         
+        _cfge.clearSearchPaths()
+        self.assertEqual(0, _cfge.getNumSearchPaths())
+        _cfge.addSearchPath("First/ Path")
+        self.assertEqual(1, _cfge.getNumSearchPaths())
+        _cfge.addSearchPath("D:\\Second\\Path\\")
+        self.assertEqual(2, _cfge.getNumSearchPaths())
+        self.assertEqual("First/ Path", _cfge.getSearchPathByIndex(0))
+        self.assertEqual("D:\\Second\\Path\\", _cfge.getSearchPathByIndex(1))
+
         del _cfge
         del _cfg

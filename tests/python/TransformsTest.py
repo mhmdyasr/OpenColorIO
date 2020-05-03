@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright Contributors to the OpenColorIO Project.
 
 import unittest, os, sys
 import PyOpenColorIO as OCIO
@@ -201,20 +203,17 @@ class TransformsTest(unittest.TestCase):
         self.assertEqual("foobar", ft.getCCCId())
         ft.setInterpolation(OCIO.Constants.INTERP_NEAREST)
         self.assertEqual(OCIO.Constants.INTERP_NEAREST, ft.getInterpolation())
-        self.assertEqual(22, ft.getNumFormats())
+        self.assertEqual(24, ft.getNumFormats())
         self.assertEqual("flame", ft.getFormatNameByIndex(0))
         self.assertEqual("3dl", ft.getFormatExtensionByIndex(0))
 
         ### GroupTransform ###
         gt = OCIO.GroupTransform()
-        gt.push_back(et)
-        gt.push_back(ft)
-        self.assertEqual(2, gt.size())
-        self.assertEqual(False, gt.empty())
+        gt.appendTransform(et)
+        gt.appendTransform(ft)
+        self.assertEqual(2, gt.getNumTransforms())
         foo = gt.getTransform(0)
         self.assertEqual(OCIO.Constants.TRANSFORM_DIR_FORWARD, foo.getDirection())
-        gt.clear()
-        self.assertEqual(0, gt.size())
 
         ### LogTransform ###
         lt = OCIO.LogTransform()
@@ -233,30 +232,22 @@ class TransformsTest(unittest.TestCase):
         ### MatrixTransform ###
         mt = OCIO.MatrixTransform()
         mmt = mt.createEditableCopy()
-        mt.setValue([0.1, 0.2, 0.3, 0.4,
+        mt.setMatrix([0.1, 0.2, 0.3, 0.4,
                      0.5, 0.6, 0.7, 0.8,
                      0.9, 1.0, 1.1, 1.2,
-                     1.3, 1.4, 1.5, 1.6],
-                    [0.1, 0.2, 0.3, 0.4])
+                     1.3, 1.4, 1.5, 1.6])
+        mt.setOffset([0.1, 0.2, 0.3, 0.4])
         self.assertEqual(False, mt.equals(mmt))
-        m44_1, offset_1 = mt.getValue()
+        m44_1 = mt.getMatrix()
+        offset_1 = mt.getOffset()
         self.assertAlmostEqual(0.3, m44_1[2], delta=1e-7)
         self.assertAlmostEqual(0.2, offset_1[1], delta=1e-7)
-        mt.setMatrix([1.1, 1.2, 1.3, 1.4,
-                      1.5, 1.6, 1.7, 1.8,
-                      1.9, 2.0, 2.1, 2.2,
-                      2.3, 2.4, 2.5, 2.6])
-        m44_2 = mt.getMatrix()
-        self.assertAlmostEqual(1.3, m44_2[2], delta=1e-7)
-        mt.setOffset([1.1, 1.2, 1.3, 1.4])
-        offset_2 = mt.getOffset()
-        self.assertAlmostEqual(1.4, offset_2[3])
-        mt.Fit([0.1, 0.1, 0.1, 0.1],
-               [0.9, 0.9, 0.9, 0.9],
-               [0.0, 0.0, 0.0, 0.0],
-               [1.1, 1.1, 1.1, 1.1])
-        m44_3 = mt.getMatrix()
-        self.assertAlmostEqual(1.3, m44_3[2], delta=1e-7)
+        m44_2, offset_2 = mt.Fit([0.1, 0.1, 0.1, 0.1],
+                                 [0.9, 0.9, 0.9, 0.9],
+                                 [0.0, 0.0, 0.0, 0.0],
+                                 [1.1, 1.1, 1.1, 1.1])
+
+        self.assertAlmostEqual(1.375, m44_2[0], delta=1e-7)
         m44_3, offset_2 = mt.Identity()
         self.assertAlmostEqual(0.0, m44_3[1], delta=1e-7)
         m44_2, offset_2 = mt.Sat(0.5, [0.2126, 0.7152, 0.0722])
@@ -272,7 +263,8 @@ class TransformsTest(unittest.TestCase):
                                     1.3, 1.4, 1.5, 1.6],
                                    [0.1, 0.2, 0.3, 0.4],
                                    OCIO.Constants.TRANSFORM_DIR_INVERSE)
-        m44_4, offset_4 = mt4.getValue()
+        m44_4 = mt4.getMatrix()
+        offset_4 = mt4.getOffset()
         for i in range(0, 16):
             self.assertAlmostEqual(float(i+1)/10.0, m44_4[i], delta=1e-7)
         for i in range(0, 4):
@@ -285,34 +277,10 @@ class TransformsTest(unittest.TestCase):
                                            1.3, 1.4, 1.5, 1.6],
                                    offset=[0.1, 0.2, 0.3, 0.4],
                                    direction=OCIO.Constants.TRANSFORM_DIR_INVERSE)
-        m44_5, offset_5 = mt5.getValue()
+        m44_5 = mt5.getMatrix()
+        offset_5 = mt5.getOffset()
         for i in range(0, 16):
             self.assertAlmostEqual(float(i+1)/10.0, m44_5[i], delta=1e-7)
         for i in range(0, 4):
             self.assertAlmostEqual(float(i+1)/10.0, offset_5[i], delta=1e-7)
         self.assertEqual(mt5.getDirection(), OCIO.Constants.TRANSFORM_DIR_INVERSE)
-
-        ### TruelightTransform ###
-        """
-        tt = OCIO.TruelightTransform()
-        tt.setConfigRoot("/some/path")
-        self.assertEqual("/some/path", tt.getConfigRoot())
-        tt.setProfile("profileA")
-        self.assertEqual("profileA", tt.getProfile())
-        tt.setCamera("incam")
-        self.assertEqual("incam", tt.getCamera())
-        tt.setInputDisplay("dellmon")
-        self.assertEqual("dellmon", tt.getInputDisplay())
-        tt.setRecorder("blah")
-        self.assertEqual("blah", tt.getRecorder())
-        tt.setPrint("kodasomething")
-        self.assertEqual("kodasomething", tt.getPrint())
-        tt.setLamp("foobar")
-        self.assertEqual("foobar", tt.getLamp())
-        tt.setOutputCamera("somecam")
-        self.assertEqual("somecam", tt.getOutputCamera())
-        tt.setDisplay("sRGB")
-        self.assertEqual("sRGB", tt.getDisplay())
-        tt.setCubeInput("log")
-        self.assertEqual("log", tt.getCubeInput())
-        """

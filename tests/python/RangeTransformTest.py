@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright Contributors to the OpenColorIO Project.
 
 import unittest, os, sys
 sys.path.append(os.path.join(sys.argv[1], "src", "pyglue"))
@@ -93,7 +95,8 @@ class RangeTransformTest(unittest.TestCase):
     def test_validation(self):
 
         rt1 = OCIO.RangeTransform()
-        rt1.validate()
+        with self.assertRaises(Exception):
+            rt1.validate()
 
         # Test some valid ranges
 

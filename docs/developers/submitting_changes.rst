@@ -1,3 +1,7 @@
+..
+  SPDX-License-Identifier: CC-BY-4.0
+  Copyright Contributors to the OpenColorIO Project.
+
 .. _submitting-changes:
 
 Submitting Changes
@@ -23,7 +27,7 @@ successfully contribute to the project. If any of the terms used are unfamiliar
 to you please do a quick search and then ask any of the contributors for
 assistance.
 
-* Fork the Imageworks OpenColorIO repository
+* Fork the `AcademySoftwareFoundation/OpenColorIO <https://github.com/AcademySoftwareFoundation/OpenColorIO>`_ repository
 * Activate Travis-CI and Appveyor for your fork
 * Clone your fork to your local workspace::
 
@@ -32,15 +36,15 @@ assistance.
 * cd into the cloned directory
 * Connect your cloned repo to the original upstream repository as a remote::
 
-    git remote add upstream https://github.com/imageworks/OpenColorIO.git
+    git remote add upstream https://github.com/AcademySoftwareFoundation/OpenColorIO.git
 
 * You should now have two remotes::
 
     git remote -v
     origin https://github.com/$USER/OpenColorIO (fetch)
-    origin https://github.com/$USER/OpenColorIO (fetch)
-    upstream https://github.com/imageworks/OpenColorIO (fetch)
-    upstream https://github.com/imageworks/OpenColorIO (push)
+    origin https://github.com/$USER/OpenColorIO (push)
+    upstream https://github.com/AcademySoftwareFoundation/OpenColorIO (fetch)
+    upstream https://github.com/AcademySoftwareFoundation/OpenColorIO (push)
 
 * Pull the latest changes from upstream::
 

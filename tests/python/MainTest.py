@@ -1,10 +1,12 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright Contributors to the OpenColorIO Project.
 
 import unittest, os, sys
 import PyOpenColorIO as OCIO
 
 class MainTest(unittest.TestCase):
     
-    FOO ="""ocio_profile_version: 1
+    FOO ="""ocio_profile_version: 2
 
 search_path: \"\"
 strictparsing: false
@@ -12,6 +14,10 @@ luma: [0.2126, 0.7152, 0.0722]
 
 roles:
   default: raw
+
+file_rules:
+  - !<Rule> {name: ColorSpaceNamePathSearch}
+  - !<Rule> {name: Default, colorspace: default}
 
 displays:
   sRGB:

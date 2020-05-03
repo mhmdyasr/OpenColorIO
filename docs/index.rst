@@ -1,3 +1,7 @@
+..
+  SPDX-License-Identifier: CC-BY-4.0
+  Copyright Contributors to the OpenColorIO Project.
+
 Home
 ====
 
@@ -57,10 +61,10 @@ Downloading and Building the Code
 *********************************
 
 Source code is available on Github at
-http://github.com/imageworks/OpenColorIO
+http://github.com/AcademySoftwareFoundation/OpenColorIO
 
-Download a `.zip <http://github.com/imageworks/OpenColorIO/zipball/master>`_ or
-`.tar.gz <http://github.com/imageworks/OpenColorIO/tarball/master>`_ of the
+Download a `.zip <http://github.com/AcademySoftwareFoundation/OpenColorIO/zipball/master>`_ or
+`.tar.gz <http://github.com/AcademySoftwareFoundation/OpenColorIO/tarball/master>`_ of the
 current state of the repository.
 
 Please see the :ref:`developer-guide` for more info, and contact `ocio-dev
@@ -84,8 +88,8 @@ Please see the :ref:`developer-guide` for more info, and contact `ocio-dev
     FAQ
     downloads
     
-    CHANGELOG
-    LICENSE
+    ChangeLog
+    License
 
 --------------------------------------------------------------------------------
 

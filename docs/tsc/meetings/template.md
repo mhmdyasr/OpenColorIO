@@ -1,21 +1,26 @@
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- Copyright Contributors to the OpenColorIO Project. -->
+
 DATE
 
-Host: NAME (John Mertic?)
+Host: NAME (Michael Dolan?)
 
 Rotating Secretary: NAME
 
 Attendees:
   * [ ] Mark Boorer (_TSC_) - Industrial Light & Magic
-  * [ ] Sean Cooper (_TSC_) - DNEG
-  * [ ] Michael Dolan (_TSC Chair_) - Sony Pictures Imageworks
-  * [ ] Larry Gritz (_TSC_) - Sony Pictures Imageworks
-  * [ ] Thanh Ha - Academy Software Foundation / Linux Foundation
+  * [ ] Mei Chu (_TSC_) - Sony Pictures Imageworks
+  * [ ] Sean Cooper (_TSC ACES TAC Rep_) - DNEG
+  * [ ] Michael Dolan (_TSC Chair_) - Epic Games
   * [ ] Patrick Hodoul (_TSC_) - Autodesk
   * [ ] John Mertic - Academy Software Foundation / Linux Foundation
-  * [ ] Carl Rand (_TSC_) - Foundry
+  * [ ] Carl Rand (_TSC_) - Weta Digital
   * [ ] Doug Walker (_TSC Chief Architect_) - Autodesk
   * [ ] Kevin Wheatley (_TSC_) - Framestore
   * ...others...
+
+Apologies:
+  NONE
 
 # **OCIO TSC Meeting Notes**
 
